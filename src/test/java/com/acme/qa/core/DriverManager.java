@@ -19,61 +19,44 @@ public class DriverManager {
         return TL_DRIVER.get();
     }
 
+    // ---- in DriverManager ----
     public static void createDriver() {
-        // Prefer Grid when a URL is provided via any of these knobs
-        String discoveredGridUrl = firstNonBlank(
-                System.getProperty("selenium.grid.url"),
-                System.getProperty("gridUrl"),
+        String browser  = sys("browser",  "chrome");
+        boolean headless = Boolean.parseBoolean(sys("headless", "true"));
+
+        // Decide whether to use Grid
+        String runTarget = sys("runTarget", "");                 // "grid" forces remote
+        String gridUrl   = coalesce(                             // <— renamed helper
+                sys("gridUrl", null),
+                sys("selenium.grid.url", null),
                 System.getenv("SELENIUM_GRID_URL")
         );
 
-        String browser  = sys("browser", "chrome");
-        boolean headless = Boolean.parseBoolean(sys("headless", "true"));
+        boolean useGrid = "grid".equalsIgnoreCase(runTarget);
 
-        // If a grid URL is present, force runTarget=grid. Otherwise honor runTarget/local/vendor.
-        String runTarget = sys("runTarget", discoveredGridUrl.isBlank() ? "local" : "grid");
-
-        WebDriver driver;
-        switch (runTarget) {
-            case "grid" -> {
-                String gridUrl = discoveredGridUrl.isBlank()
-                        ? sys("gridUrl", "http://localhost:4444")  // final fallback
-                        : discoveredGridUrl;
-                driver = remoteDriver(browser, headless, gridUrl, null);
-            }
-
-            case "browserstack" -> {
-                String user = envOrSys("BSTACK_USERNAME");
-                String key  = envOrSys("BSTACK_ACCESS_KEY");
-                String url  = "https://" + user + ":" + key + "@hub.browserstack.com/wd/hub";
-                Map<String, Object> bsOpts = new HashMap<>();
-                bsOpts.put("os", "Windows");
-                bsOpts.put("osVersion", "11");
-                bsOpts.put("projectName", "webtests");
-                bsOpts.put("buildName", "build-" + System.currentTimeMillis());
-                bsOpts.put("sessionName", browser + " run");
-                driver = remoteDriver(browser, headless, url, Map.of("bstack:options", bsOpts));
-            }
-
-            case "sauce" -> {
-                String user = envOrSys("SAUCE_USERNAME");
-                String key  = envOrSys("SAUCE_ACCESS_KEY");
-                String url  = "https://ondemand.us-west-1.saucelabs.com/wd/hub";
-                Map<String, Object> sauce = new HashMap<>();
-                sauce.put("name", "webtests");
-                sauce.put("build", "build-" + System.currentTimeMillis());
-                driver = remoteDriver(browser, headless, url, Map.of("sauce:options", sauce));
-            }
-
-            case "local" -> driver = localDriver(browser, headless);
-
-            default -> throw new IllegalArgumentException("Unknown runTarget: " + runTarget);
-        }
+        WebDriver driver = useGrid
+                ? remoteDriver(browser, headless, normalizeGridUrl(gridUrl), null)
+                : localDriver(browser, headless);
 
         driver.manage().timeouts().implicitlyWait(
-                Duration.ofMillis(Long.parseLong(sys("implicitWaitMs","0"))));
-        driver.manage().timeouts().pageLoadTimeout(Duration.ofSeconds(60));
+                java.time.Duration.ofMillis(Long.parseLong(sys("implicitWaitMs","0")))
+        );
+        driver.manage().timeouts().pageLoadTimeout(java.time.Duration.ofSeconds(60));
         TL_DRIVER.set(driver);
+    }
+
+    // ---------- small helpers ----------
+    private static boolean isBlank(String s) { return s == null || s.trim().isEmpty(); }
+
+    private static String coalesce(String... vals) {            // <— new name
+        for (String v : vals) if (!isBlank(v)) return v.trim();
+        return null;
+    }
+
+    /** Accepts "http://host:4444" or "http://host:4444/wd/hub" */
+    private static String normalizeGridUrl(String url) {
+        if (isBlank(url)) return "http://localhost:4444";
+        return url.trim();
     }
 
     public static void quitDriver() {
