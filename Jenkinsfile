@@ -3,7 +3,6 @@ pipeline {
 
   options {
     timestamps()
-    ansiColor('xterm')
   }
 
   tools {
@@ -11,17 +10,21 @@ pipeline {
     jdk   'Java17'
   }
 
+  environment {
+    GRID_URL = 'http://54.90.94.39:4444/wd/hub'
+  }
+
   stages {
     stage('Build & Test') {
       steps {
-        sh '''
+        sh """
           mvn -q \
             -Dheadless=true \
             -DrunTarget=grid \
-            -DgridUrl=http://54.90.94.39:4444/wd/hub \
+            -DgridUrl=${GRID_URL} \
             -Djava.awt.headless=true \
             clean test
-        '''
+        """
       }
     }
   }
