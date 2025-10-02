@@ -2,17 +2,16 @@ pipeline {
   agent any
 
   tools {
-    maven 'Maven3'     // Jenkins > Manage Jenkins > Tools names
+    maven 'Maven3'
     jdk   'Java17'
   }
 
   options {
     timestamps()
-    ansiColor('xterm')
   }
 
   environment {
-    GRID_URL = 'http://54.90.94.39:4444'   // your Selenium Grid hub
+    GRID_URL = 'http://54.90.94.39:4444'
   }
 
   stages {
@@ -25,11 +24,12 @@ pipeline {
             clean test
         """
       }
-      post {
-        always {
-          junit 'target/surefire-reports/*.xml'
-        }
-      }
+    }
+  }
+
+  post {
+    always {
+      junit 'target/surefire-reports/*.xml'
     }
   }
 }
