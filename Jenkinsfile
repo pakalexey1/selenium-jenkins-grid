@@ -1,28 +1,17 @@
 pipeline {
-    agent any
+  agent any
+  tools { maven 'Maven3'; jdk 'Java17' }
 
-    tools {
-        maven 'Maven3'   // You will configure Maven under Jenkins → Global Tool Configuration
-        jdk 'Java17'     // Same with JDK
+  stages {
+    stage('Build & Test') {
+      steps {
+        sh 'chmod +x mvnw || true'
+        sh './mvnw -q -Dselenium.grid.url=http://54.90.94.39:4444 -Dheadless=true clean test'
+      }
     }
+  }
 
-    stages {
-        stage('Checkout') {
-            steps {
-                git branch: 'main', url: 'https://github.com/your-username/your-repo.git'
-            }
-        }
-
-        stage('Build') {
-            steps {
-                sh 'mvn clean install -DskipTests'
-            }
-        }
-
-        stage('Test') {
-            steps {
-                sh 'mvn test'
-            }
-        }
-    }
+  post {
+    always { junit '**/target/surefire-reports/*.xml' }
+  }
 }
