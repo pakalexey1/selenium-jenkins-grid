@@ -1,27 +1,35 @@
 pipeline {
-    agent any
+  agent any
 
-    tools {
-        maven 'Maven3'
-        jdk 'Java17'
-    }
+  tools {
+    maven 'Maven3'     // Jenkins > Manage Jenkins > Tools names
+    jdk   'Java17'
+  }
 
-stage('Build & Test') {
-    steps {
-        sh '''
-            mvn -q \
-              -DrunTarget=grid \
-              -DgridUrl=http://54.90.94.39:4444 \
-              -Dbrowser=chrome \
-              -Dheadless=true \
-              clean test
-        '''
-    }
-}
+  options {
+    timestamps()
+    ansiColor('xterm')
+  }
 
-    post {
+  environment {
+    GRID_URL = 'http://54.90.94.39:4444'   // your Selenium Grid hub
+  }
+
+  stages {
+    stage('Build & Test') {
+      steps {
+        sh """
+          mvn -q \
+            -Dselenium.grid.url=${GRID_URL} \
+            -Dheadless=true \
+            clean test
+        """
+      }
+      post {
         always {
-            junit '**/target/surefire-reports/*.xml'
+          junit 'target/surefire-reports/*.xml'
         }
+      }
     }
+  }
 }
