@@ -14,16 +14,17 @@ pipeline {
     GRID_URL = 'http://54.90.94.39:4444'
   }
 
-  stages {
-    stage('Build & Test') {
-      steps {
-        sh """
-          mvn -q \
-            -Dselenium.grid.url=${GRID_URL} \
-            -Dheadless=true \
-            clean test
-        """
-      }
+  stage('Build & Test') {
+    steps {
+      sh '''
+        mvn -q \
+          -DrunTarget=grid \
+          -DgridUrl=http://54.90.94.39:4444 \
+          -Dbrowser=chrome \
+          -Dheadless=true \
+          -Dwebdriver.http.factory=jdk \
+          clean test
+      '''
     }
   }
 
